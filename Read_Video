@@ -1,0 +1,53 @@
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <stdio.h>
+#include <iostream>
+#include <chrono>
+
+#define CN(a) std::cout << a << std::endl;
+#define input "test_video.mp4"
+#define result "result.mp4"
+
+using namespace cv;
+using namespace std;
+
+
+static struct std::chrono::system_clock::time_point start_time;
+
+
+static void start_t() {
+	start_time = std::chrono::system_clock::now();
+}
+
+static double end_t() {
+	std::chrono::system_clock::time_point end_time = std::chrono::system_clock::now();
+	std::chrono::duration<double> sec = end_time - start_time;
+	double elapsed = sec.count();
+	std::cout << "Elapsed time : " << elapsed << " sec" << std::endl;
+
+	return elapsed;
+}
+
+
+int main() {
+	start_t();
+	VideoCapture org_video(input);
+
+	if (!org_video.isOpened()) {
+		CN(input << " can not open");
+		return -1;
+	}
+
+	Mat frame;
+	while (1) {
+		org_video >> frame;
+		if (frame.empty())
+			break;
+
+		imshow("cur_frame", frame);
+		waitKey(0);
+	}
+	CN("[DONE]");
+	return 0;
+}
