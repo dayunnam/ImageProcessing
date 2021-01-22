@@ -1,7 +1,8 @@
 /*
-opencv4.5.1 
+Windows
 visual studio 2019
 C++
+opencv4.5.1 
 */
 
 
@@ -10,6 +11,7 @@ C++
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/calib3d.hpp>
+#include <Windows.h>
 #include <thread>
 #include <stdio.h>
 #include <iostream>
@@ -27,6 +29,8 @@ C++
 #define Max(x, y)                   ((x)>(y)?(x):(y))
 #define Abs(x)                      ((x)>0?(x):(-(x)))  
 #define Sqr(x)                      ((x)*(x))      
+
+
 using namespace cv;
 using namespace std;
 
@@ -108,6 +112,32 @@ void Projecting_img(const Mat& org_img, const Mat& P_mat, Mat& result_img) {
 }
 
 
+cv::Size getDisplaySize() {
+	int iMonitorWidth = GetSystemMetrics(SM_CXSCREEN);
+	int iMonitorHeight = GetSystemMetrics(SM_CYSCREEN);
+	cv::Size display_size = { iMonitorWidth, iMonitorHeight };
+	return display_size;
+}
+
+cv::Mat& ShowImage(cv::Mat& img, bool img_resize,  int waitKey_val) {
+
+	cv::Mat display_img;
+	cv::Size display_size = getDisplaySize();
+	if (img_resize && (img.size().width > display_size.width || img.size().height > display_size.height)) {
+		double scale_x = static_cast<double>(display_size.width) / static_cast<double>(img.size().width);
+		double scale_y = static_cast<double>(display_size.height) / static_cast<double>(img.size().height);
+		double scale = min(scale_x, scale_y) * 0.9;
+		cv::resize(img, display_img, Size(0,0), scale, scale);
+		cv::imshow("display image", display_img);
+		cv::waitKey(waitKey_val);
+	}
+	else {
+		cv::imshow("display image", img);
+		cv::waitKey(waitKey_val);
+	}
+	return display_img;
+}
+
 int main() {
 	start_t();
 	VideoCapture org_video(input);
@@ -169,8 +199,9 @@ int main() {
 	}
 
 	for (int f_idx = 0; f_idx < final_frame_set.size(); f_idx++) {
-		imshow("w", final_frame_set[f_idx]);
-		waitKey(10);
+		//imshow("w", final_frame_set[f_idx]);
+		//waitKey(10);
+		ShowImage(final_frame_set[f_idx], true, 10);
 	}
 
 #endif
