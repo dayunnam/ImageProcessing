@@ -29,7 +29,7 @@ double& Normal_Func(const double x1, const double x2, const Vector2d mean_, cons
 	Matrix2d inv_cov = cov.inverse();
 	Vector2d pos(x1 - mean_(0), x2 - mean_(1));
 	double temp = pos.transpose() * inv_cov * pos;
-	double N = scale*1.0/(2.0*PI)*exp(-temp/2.0);
+	double N = scale * 1.0 / (2.0 * PI) * exp(-temp / 2.0);
 	return N;
 }
 
@@ -56,7 +56,7 @@ int main() {
 		ex *= 1.02;
 		ey *= 1.02;
 		exy *= 0.99;
-		Mat img = Draw_Distribution(Size(512, 512), ex, ey,exy);
+		Mat img = Draw_Distribution(Size(512, 512), ex, ey, exy);
 		imshow("Normal Distribution", img);
 		waitKey(5);
 	}
