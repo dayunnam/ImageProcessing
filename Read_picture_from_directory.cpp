@@ -16,6 +16,10 @@ int main(int argc, char* argv[])
     }
     
     cv::String path_ = argv[1];
+    cv::String result_name_ = argv[2];
+    float scale_f = -1.0; 
+    if (argv[3] != NULL) scale_f = std::stof(argv[3]);
+
     std::vector<cv::String> img_names;
     try
     {
@@ -36,9 +40,73 @@ int main(int argc, char* argv[])
         return -1;
     }
     int num_images = static_cast<int>(img_names.size());
-
+    std::vector<cv::Mat> org_img_set(num_images);
+    std::vector<cv::Mat> scaled_img_set(num_images);
     std::cout << "The number of pictures : " << num_images << std::endl;
+    if (scale_f > 0.0) std::cout << "scale factor : " << scale_f << std::endl;
     
+    for (int i = 0; i < num_images; ++i)
+    {
+        org_img_set[i] = cv::imread(img_names[i]);
 
+        if (org_img_set[i].empty())
+        {
+            std::cout << "Can't open image " << img_names[i] << std::endl;
+            getchar();
+            return -1;
+        }
+        if (scale_f > 0) {
+            resize(org_img_set[i], scaled_img_set[i], cv::Size(), scale_f, scale_f);
+            std::string buff = img_names[i].substr(0, img_names[i].length()-4) + "_s.png";
+            std::cout << "original image size : " << org_img_set[i].size()<< std::endl;
+            std::cout << "scaled image size : " << scaled_img_set[i].size()<< std::endl;
+            cv::imwrite(buff, scaled_img_set[i]);
+        }
+    }
+    std::cout << "[DONE]" << std::endl;
     return 0;
 }
+
+/*
+#include "Common.h"
+#include "MatchFeature.h"
+#include "ConvFeature.h"
+#include "Ref_Algo.h"
+
+int main() {
+    start_t();
+    
+    Mat base_img_ = imread(BASIC_IMG);
+    Mat target_img_ = imread(TARGET_IMG);
+    if (base_img_.data == nullptr || target_img_.data == nullptr) {
+        EN("empty image");
+        return -1;
+    }
+    // conventional feature dectection
+    ConvFeature FD("BRISK");
+    FD.getMatches(base_img_, target_img_);
+    //FD.DrawMatches(base_img_, target_img_, true);
+    FD.inform_elapsed_time();
+
+    end_t();
+    
+    CN("[DONE]");
+}
+
+// proposed algoritm
+int main() {
+    start_t();
+    Mat base_img_ = imread(BASIC_IMG);
+    Mat target_img_ = imread(TARGET_IMG);
+    if (base_img_.data == nullptr || target_img_.data == nullptr) {
+        EN("empty image");
+        return -1;
+    }
+    MeshMatch MM;
+    MM.MatchingMesh(base_img_, target_img_);
+    MM.inform_elapsed_time();
+    MM.DisplayCurrentMatches();
+    end_t();
+    CN("[DONE]");
+}
+*/
