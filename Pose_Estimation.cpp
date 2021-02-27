@@ -504,7 +504,7 @@ bool Write_JSON_file(const std::vector<Img_info>& Image_info_, const char* resul
         fprintf(fpts, "      \"Rotation\": [%.6f, %.6f, %.6f],\n", Image_info_[pic_idx].yaw, Image_info_[pic_idx].pitch, Image_info_[pic_idx].roll);
         fprintf(fpts, "      \"Focal\": [%.6f, %.6f],\n", Image_info_[pic_idx].focal, Image_info_[pic_idx].focal);
         fprintf(fpts, "      \"Principle_point\": [%.6f, %.6f],\n",  Image_info_[pic_idx].c_x, Image_info_[pic_idx].c_y);
-        fprintf(fpts, "      \"Depth_range:\": [%.6f, %.6f],\n",  Image_info_[pic_idx].min_z_val, Image_info_[pic_idx].max_z_val);
+        fprintf(fpts, "      \"Depth_range\": [%.6f, %.6f],\n",  Image_info_[pic_idx].min_z_val, Image_info_[pic_idx].max_z_val);
         fprintf(fpts, "      \"Resolution\": [%d, %d]\n",  Image_info_[pic_idx].Image.cols, Image_info_[pic_idx].Image.rows);
         fprintf(fpts, "    },\n");
     }
