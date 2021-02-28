@@ -1,3 +1,4 @@
+#pragma once
 
 #include <iostream>
 #include <fstream>
@@ -23,7 +24,6 @@
 #include <cmath>
 #include <math.h>
 
-
 double epsilon_ = 0.0000001;
 double pi_ = 3.1415926535;
 std::string features_type = "orb";
@@ -33,9 +33,8 @@ std::string estimator_type = "homography";
 bool try_cuda = false;
 int range_width = -1;
 float conf_thresh = 1.f;
-bool show_match =false;
+bool show_match = false;
 double distance_scale = 1e-3; // meters
-
 
 struct ReprojectionError7DOF
 {
@@ -107,7 +106,6 @@ private:
     const cv::Point2d c;
 };
 
-
 class SFM
 {
 public:
@@ -145,8 +143,6 @@ public:
     }
 };
 
-
-
 class Img_info {
 public:
     cv::Mat Image;
@@ -161,11 +157,10 @@ public:
     double max_z_val; // maximum depth value
 };
 
-
 void RotationMatrixToEulerAngles(const cv::Matx33d& R_, double& yaw, double& pitch, double& roll) {
     cv::Matx33d permute(0, 0, 1.0, -1.0, 0, 0, 0, -1.0, 0);
-    cv::Matx33d A = permute*R_;
-    cv::Matx33d B = A*permute.t();
+    cv::Matx33d A = permute * R_;
+    cv::Matx33d B = A * permute.t();
     cv::Matx33d R = B.t();
 
     yaw = 0.0;
@@ -226,7 +221,6 @@ std::vector<bool> maskNoisyPoints(std::vector<cv::Point3d>& Xs, const std::vecto
     return is_noisy;
 }
 
-
 bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std::string>& img_name, std::vector<Img_info>& Image_info_) {
     int num_img = img_set.size();
     cv::Ptr<cv::Feature2D> finder;
@@ -259,7 +253,7 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
         cv::detail::computeImageFeatures(finder, img_set[pic_idx], feature_set[pic_idx]);
         feature_set[pic_idx].img_idx = pic_idx;
     }
-    
+
     std::vector<cv::detail::MatchesInfo> pairwise_matches;
     cv::Ptr<cv::detail::FeaturesMatcher> matcher;
 
@@ -278,7 +272,7 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
 
     Image_info_.resize(num_images);
 
-    
+
     if (num_images < 2)
     {
         std::cout << "Need more images" << std::endl;
@@ -324,12 +318,12 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
     cx_init = img_set.front().cols / 2;
     cy_init = img_set.front().rows / 2;
 
-    
+
     std::vector<std::pair<uint, uint>> match_pair;
     std::vector<std::vector<cv::DMatch>> match_inlier;
 
-    for (size_t i = 0; i < num_images; i++){
-        for (size_t j = i + 1; j < num_images; j++){
+    for (size_t i = 0; i < num_images; i++) {
+        for (size_t j = i + 1; j < num_images; j++) {
             int pair_idx = i * num_images + j;
 
             if (pairwise_matches[pair_idx].confidence < conf_thresh) continue;
@@ -348,12 +342,12 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
                     continue;
                 inlier.push_back(matches_[k]);
             }
-            
+
             fprintf(stdout, "Image %zd - %zd are matched (%zd / %zd).\n", i, j, inlier.size(), matches_.size());
-            
+
             match_pair.push_back(std::make_pair(uint(i), uint(j)));
             match_inlier.push_back(inlier);
-            
+
             if (show_match)
             {
                 cv::Mat match_image;
@@ -439,7 +433,7 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
 
     for (size_t j = 0; j < cameras.size(); j++) {
 
-       
+
         double min_z, max_z;
         cv::Vec3d rvec(cameras[j][0], cameras[j][1], cameras[j][2]), t(cameras[j][3], cameras[j][4], cameras[j][5]);
         cv::Matx33d R;
@@ -448,21 +442,21 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
 
         cv::Vec3d cam2pt(Xs[0].x - p[0], Xs[0].y - p[1], Xs[0].z - p[2]);
         cv::Vec3d normal(R.t()(0, 2), R.t()(1, 2), R.t()(2, 2));
-        
+
 
         // compute minimum and maximum of depth
         double z = cam2pt.dot(normal);
-        min_z = z; 
-        max_z = z; 
+        min_z = z;
+        max_z = z;
         for (size_t i = 1; i < Xs.size(); i++)
         {
             if (Xs[i].z > -Z_limit && Xs[i].z < Z_limit && !is_noisy[i]) {
-                cv::Vec3d cam2pt(Xs[i].x - p[0] , Xs[i].y - p[1], Xs[i].z - p[2]);
+                cv::Vec3d cam2pt(Xs[i].x - p[0], Xs[i].y - p[1], Xs[i].z - p[2]);
                 cv::Vec3d normal(R.t()(0, 2), R.t()(1, 2), R.t()(2, 2));
                 double z_temp = cam2pt.dot(normal);
                 if (z_temp > 0) {
                     if (z_temp < min_z) { min_z = z_temp; }
-                    else if(z_temp > max_z) { max_z = z_temp; }
+                    else if (z_temp > max_z) { max_z = z_temp; }
                 }
             }
         }
@@ -492,26 +486,27 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
 
 bool Write_JSON_file(const std::vector<Img_info>& Image_info_, const char* result_path) {
     if (Image_info_.empty()) return false;
-    int name_start_pos = Image_info_[0].FileName.find("\\",0) > Image_info_[0].FileName.find("/", 0) ? Image_info_[0].FileName.find("\\", 0) + 1 : Image_info_[0].FileName.find("/", 0) + 1;
+    int name_start_pos = Image_info_[0].FileName.find("\\", 0) > Image_info_[0].FileName.find("/", 0) ? Image_info_[0].FileName.find("\\", 0) + 1 : Image_info_[0].FileName.find("/", 0) + 1;
     FILE* fpts;
     fopen_s(&fpts, result_path, "w");
     fprintf(fpts, "{\n");
     fprintf(fpts, "  \"camera\":[\n");
     for (int pic_idx = 0; pic_idx < Image_info_.size(); pic_idx++) {
         fprintf(fpts, "    {\n");
-        fprintf(fpts, "      \"Name\": \"%s\",\n", Image_info_[pic_idx].FileName.substr(name_start_pos, Image_info_[pic_idx].FileName.length() - 4- name_start_pos));
+        fprintf(fpts, "      \"Name\": \"%s\",\n", Image_info_[pic_idx].FileName.substr(name_start_pos, Image_info_[pic_idx].FileName.length() - 4 - name_start_pos));
         fprintf(fpts, "      \"Position\": [%.6f, %.6f, %.6f],\n", Image_info_[pic_idx].pos0, Image_info_[pic_idx].pos1, Image_info_[pic_idx].pos2);
         fprintf(fpts, "      \"Rotation\": [%.6f, %.6f, %.6f],\n", Image_info_[pic_idx].yaw, Image_info_[pic_idx].pitch, Image_info_[pic_idx].roll);
         fprintf(fpts, "      \"Focal\": [%.6f, %.6f],\n", Image_info_[pic_idx].focal, Image_info_[pic_idx].focal);
-        fprintf(fpts, "      \"Principle_point\": [%.6f, %.6f],\n",  Image_info_[pic_idx].c_x, Image_info_[pic_idx].c_y);
-        fprintf(fpts, "      \"Depth_range\": [%.6f, %.6f],\n",  Image_info_[pic_idx].min_z_val, Image_info_[pic_idx].max_z_val);
-        fprintf(fpts, "      \"Resolution\": [%d, %d]\n",  Image_info_[pic_idx].Image.cols, Image_info_[pic_idx].Image.rows);
+        fprintf(fpts, "      \"Principle_point\": [%.6f, %.6f],\n", Image_info_[pic_idx].c_x, Image_info_[pic_idx].c_y);
+        fprintf(fpts, "      \"Depth_range\": [%.6f, %.6f],\n", Image_info_[pic_idx].min_z_val, Image_info_[pic_idx].max_z_val);
+        fprintf(fpts, "      \"Resolution\": [%d, %d]\n", Image_info_[pic_idx].Image.cols, Image_info_[pic_idx].Image.rows);
         fprintf(fpts, "    },\n");
     }
-   
+
     fprintf(fpts, "  ]\n");
     fprintf(fpts, "}\n");
 }
+
 
 int main(int argc, char* argv[])
 {
@@ -522,8 +517,10 @@ int main(int argc, char* argv[])
     
     cv::String path_ = argv[1];
     const char* result_text_ = argv[2];
-    float scale_f = -1.0; 
+    float scale_f = -1.0;
     if (argv[3] != NULL) scale_f = std::stof(argv[3]);
+
+    if (scale_f < epsilon_) scale_f = 1.0;
 
     std::vector<cv::String> img_names;
     try
@@ -545,13 +542,18 @@ int main(int argc, char* argv[])
         return -1;
     }
     int num_images = static_cast<int>(img_names.size());
-    
+
+    if (num_images >= 1000) {
+        std::cerr << "Too many pictures to process" << std::endl;
+        return -1;
+    }
+
     std::vector<cv::Mat> org_img_set(num_images);
     std::vector<cv::Mat> scaled_img_set(num_images);
     std::vector<std::string> scaled_img_names(num_images);
     std::cout << "# of pictures : " << num_images << std::endl;
     if (scale_f > 0.0) std::cout << "scale factor : " << scale_f << std::endl;
-    
+
     for (int i = 0; i < num_images; ++i)
     {
         org_img_set[i] = cv::imread(img_names[i]);
@@ -562,15 +564,26 @@ int main(int argc, char* argv[])
             getchar();
             return -1;
         }
-        if (scale_f > 0) {
-            resize(org_img_set[i], scaled_img_set[i], cv::Size(), scale_f, scale_f);
-            scaled_img_names[i] = img_names[i].substr(0, img_names[i].length()-4) + "_s.png";
-            //cv::imwrite(scaled_img_names[i], scaled_img_set[i]);
-        }
+
+        resize(org_img_set[i], scaled_img_set[i], cv::Size(), scale_f, scale_f);
+        std::string zero_idx;
+        if (num_images < 100 && i < 10) zero_idx = "0";
+        else if (num_images > 100 && i < 10) zero_idx = "00";
+        else if (num_images > 100 && i < 100) zero_idx = "0";
+        else zero_idx = "";
+        scaled_img_names[i] = std::to_string(scaled_img_set[i].cols) + "x" + std::to_string(scaled_img_set[i].rows) + "_" + zero_idx + std::to_string(i) +  ".png";
+        scaled_img_names[i] = "scaled_" + scaled_img_names[i]; 
+        int name_start_pos = img_names[i].find("\\", 0) > img_names[i].find("/", 0) ? img_names[i].find("\\", 0) + 1 : img_names[i].find("/", 0) + 1;
+        scaled_img_names[i] = img_names[i].substr(0, name_start_pos) + scaled_img_names[i];
+       // cv::imwrite(scaled_img_names[i], scaled_img_set[i]);
     }
     std::vector<Img_info> Image_info;
-    pose_estimatoin(scaled_img_set, scaled_img_names,Image_info);
-    Write_JSON_file(Image_info, result_text_);
+    if (!pose_estimatoin(scaled_img_set, scaled_img_names, Image_info)) {
+        std::cerr << "[ERROR::Pose_Estimation]\n";
+    }
+    if (!Write_JSON_file(Image_info, result_text_)) {
+        std::cerr << "[ERROR::Write_JSON_file]\n";
+    }
     std::cout << "[DONE]" << std::endl;
     return 0;
 }
