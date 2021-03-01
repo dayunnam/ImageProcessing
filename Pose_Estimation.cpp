@@ -240,9 +240,10 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
     {
         finder = cv::xfeatures2d::SURF::create(400);
     }
+    /*
     else if (features_type == "sift") {
         finder = cv::SIFT::create();
-    }
+    }*/
 #endif
     else
     {
@@ -429,10 +430,9 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
     std::vector<bool> is_noisy = maskNoisyPoints(Xs, img_keypoint, cameras, xs_visited, ba_loss_width);
     int num_noisy = std::accumulate(is_noisy.begin(), is_noisy.end(), 0);
 
-    assert(img_info.size == cameras.size());
+    assert(Image_info_.size == cameras.size());
 
     for (size_t j = 0; j < cameras.size(); j++) {
-
 
         double min_z, max_z;
         cv::Vec3d rvec(cameras[j][0], cameras[j][1], cameras[j][2]), t(cameras[j][3], cameras[j][4], cameras[j][5]);
@@ -464,23 +464,21 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
         Image_info_[j].max_z_val = max_z;
         Image_info_[j].min_z_val = min_z;
 
-        /*
-        Image_info_[j].p_x = p[0];
-        Image_info_[j].p_y = p[1];
-        Image_info_[j].p_z = p[2];
-        */
-
         RotationMatrixToEulerAngles(R, Image_info_[j].yaw, Image_info_[j].pitch, Image_info_[j].roll);
         TranslationToPosition(p, 1, Image_info_[j].pos0, Image_info_[j].pos1, Image_info_[j].pos2);
         Image_info_[j].focal = cameras[j][6];
         Image_info_[j].c_x = cameras[j][7];
         Image_info_[j].c_y = cameras[j][8];
 
-        fprintf(stdout, "Camera %zd's position (x, y, z) = (%.3f, %.3f, %.3f)\n", j, Image_info_[j].pos0, Image_info_[j].pos1, Image_info_[j].pos2);
-        fprintf(stdout, "Camera %zd's rotation (x, y, y) = (%.3f, %.3f, %.3f)\n", j, Image_info_[j].yaw, Image_info_[j].pitch, Image_info_[j].roll);
+        fprintf(stdout, "Camera %zd's position (axis_0, axis_1, axis_2) = (%.3f, %.3f, %.3f)\n", j, Image_info_[j].pos0, Image_info_[j].pos1, Image_info_[j].pos2);
+        fprintf(stdout, "Camera %zd's rotation (yaw, pitch, roll) = (%.3f, %.3f, %.3f)\n", j, Image_info_[j].yaw, Image_info_[j].pitch, Image_info_[j].roll);
         fprintf(stdout, "Camera %zd's (f, cx, cy) = (%.3f, %.3f, %.3f)\n", j, Image_info_[j].focal, Image_info_[j].c_x, Image_info_[j].c_y);
         fprintf(stdout, "Camera %zd's z range  = [%.3f (=min) , %.3f (=max)]\n\n", j, min_z, max_z);
+
     }
+
+    std::cout << "# of image " << Image_info_.size() << std::endl;
+ 
     return true;
 }
 
@@ -492,8 +490,17 @@ bool Write_JSON_file(const std::vector<Img_info>& Image_info_, const char* resul
     fprintf(fpts, "{\n");
     fprintf(fpts, "  \"camera\":[\n");
     for (int pic_idx = 0; pic_idx < Image_info_.size(); pic_idx++) {
+
+        std::string zero_idx;
+        int num_img = Image_info_.size();
+        if (num_img < 100 && pic_idx < 10) zero_idx = "0";
+        else if (num_img > 100 && pic_idx < 10) zero_idx = "00";
+        else if (num_img > 100 && pic_idx < 100) zero_idx = "0";
+        else zero_idx = "";
+        std::string view_name = "v" + zero_idx + std::to_string(Image_info_[pic_idx].img_idx);
+
         fprintf(fpts, "    {\n");
-        fprintf(fpts, "      \"Name\": \"%s\",\n", Image_info_[pic_idx].FileName.substr(name_start_pos, Image_info_[pic_idx].FileName.length() - 4 - name_start_pos));
+        fprintf(fpts, "      \"Name\": \"%s\",\n", view_name);
         fprintf(fpts, "      \"Position\": [%.6f, %.6f, %.6f],\n", Image_info_[pic_idx].pos0, Image_info_[pic_idx].pos1, Image_info_[pic_idx].pos2);
         fprintf(fpts, "      \"Rotation\": [%.6f, %.6f, %.6f],\n", Image_info_[pic_idx].yaw, Image_info_[pic_idx].pitch, Image_info_[pic_idx].roll);
         fprintf(fpts, "      \"Focal\": [%.6f, %.6f],\n", Image_info_[pic_idx].focal, Image_info_[pic_idx].focal);
@@ -512,13 +519,17 @@ int main(int argc, char* argv[])
 {
     if (argc < 3) {
         fprintf(stdout, "ERROR::No input dataset\nIn order to run the program type: 'Pose_Estimation.exe [the path of input data] [the name of output] [(optional)scale factor] [(optional)the path of output]'\n");
+        fprintf(stdout, "EXAMPLE::Pose_Estimation.exe ./pic cam_param.json 1 ./out_pic'\n");
         return -1;
     }
     
     cv::String path_ = argv[1];
     const char* result_text_ = argv[2];
     float scale_f = -1.0;
-    if (argv[3] != NULL) scale_f = std::stof(argv[3]);
+    cv::String out_path_ = argv[1];
+
+    if (argc > 3) scale_f = std::stof(argv[3]);
+    if (argc > 4) out_path_ = argv[4];
 
     if (scale_f < epsilon_) scale_f = 1.0;
 
@@ -573,14 +584,17 @@ int main(int argc, char* argv[])
         else zero_idx = "";
         scaled_img_names[i] = std::to_string(scaled_img_set[i].cols) + "x" + std::to_string(scaled_img_set[i].rows) + "_" + zero_idx + std::to_string(i) +  ".png";
         scaled_img_names[i] = "scaled_" + scaled_img_names[i]; 
-        int name_start_pos = img_names[i].find("\\", 0) > img_names[i].find("/", 0) ? img_names[i].find("\\", 0) + 1 : img_names[i].find("/", 0) + 1;
-        scaled_img_names[i] = img_names[i].substr(0, name_start_pos) + scaled_img_names[i];
-       // cv::imwrite(scaled_img_names[i], scaled_img_set[i]);
+        scaled_img_names[i] = out_path_ + "/" + scaled_img_names[i];    
     }
     std::vector<Img_info> Image_info;
     if (!pose_estimatoin(scaled_img_set, scaled_img_names, Image_info)) {
         std::cerr << "[ERROR::Pose_Estimation]\n";
     }
+
+    for (int img_idx = 0; img_idx < Image_info.size(); img_idx++) {
+        cv::imwrite(scaled_img_names[img_idx], scaled_img_set[img_idx]);
+    }
+
     if (!Write_JSON_file(Image_info, result_text_)) {
         std::cerr << "[ERROR::Write_JSON_file]\n";
     }
