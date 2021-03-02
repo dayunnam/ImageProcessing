@@ -488,7 +488,7 @@ bool Write_JSON_file(const std::vector<Img_info>& Image_info_, const char* resul
     FILE* fpts;
     fopen_s(&fpts, result_path, "w");
     fprintf(fpts, "{\n");
-    fprintf(fpts, "  \"camera\":[\n");
+    fprintf(fpts, "  \"cameras\":[\n");
     for (int pic_idx = 0; pic_idx < Image_info_.size(); pic_idx++) {
 
         std::string zero_idx;
@@ -500,6 +500,13 @@ bool Write_JSON_file(const std::vector<Img_info>& Image_info_, const char* resul
         std::string view_name = "v" + zero_idx + std::to_string(Image_info_[pic_idx].img_idx);
 
         fprintf(fpts, "    {\n");
+        fprintf(fpts, "      \"Depthmap\": 1,\n");
+        fprintf(fpts, "      \"Background\": 0,\n");
+        fprintf(fpts, "      \"BitDepthColor\": 8,\n");
+        fprintf(fpts, "      \"BitDepthDepth\": 16,\n");
+        fprintf(fpts, "      \"ColorSpace\": \"YUV420\",\n");
+        fprintf(fpts, "      \"DepthColorSpace\": \"YUV420\",\n");
+        fprintf(fpts, "      \"Projection\": \"Perspective\",\n");
         fprintf(fpts, "      \"Name\": \"%s\",\n", view_name);
         fprintf(fpts, "      \"Position\": [%.6f, %.6f, %.6f],\n", Image_info_[pic_idx].pos0, Image_info_[pic_idx].pos1, Image_info_[pic_idx].pos2);
         fprintf(fpts, "      \"Rotation\": [%.6f, %.6f, %.6f],\n", Image_info_[pic_idx].yaw, Image_info_[pic_idx].pitch, Image_info_[pic_idx].roll);
@@ -507,7 +514,8 @@ bool Write_JSON_file(const std::vector<Img_info>& Image_info_, const char* resul
         fprintf(fpts, "      \"Principle_point\": [%.6f, %.6f],\n", Image_info_[pic_idx].c_x, Image_info_[pic_idx].c_y);
         fprintf(fpts, "      \"Depth_range\": [%.6f, %.6f],\n", Image_info_[pic_idx].min_z_val, Image_info_[pic_idx].max_z_val);
         fprintf(fpts, "      \"Resolution\": [%d, %d]\n", Image_info_[pic_idx].Image.cols, Image_info_[pic_idx].Image.rows);
-        fprintf(fpts, "    },\n");
+        if(pic_idx != Image_info_.size()-1) fprintf(fpts, "    },\n");
+        else fprintf(fpts, "    }\n");
     }
 
     fprintf(fpts, "  ]\n");
@@ -518,7 +526,7 @@ bool Write_JSON_file(const std::vector<Img_info>& Image_info_, const char* resul
 int main(int argc, char* argv[])
 {
     if (argc < 3) {
-        fprintf(stdout, "ERROR::No input dataset\nIn order to run the program type: 'Pose_Estimation.exe [the path of input data] [the name of output] [(optional)scale factor] [(optional)the path of output]'\n");
+        fprintf(stdout, "ERROR::No input dataset\nIn order to run the program type: 'Pose_Estimation.exe [the path of input data] [the name of output json file] [(optional)scale factor] [(optional)the path of output picture] [(optional)data name]'\n");
         fprintf(stdout, "EXAMPLE::Pose_Estimation.exe ./pic cam_param.json 1 ./out_pic'\n");
         return -1;
     }
@@ -527,9 +535,11 @@ int main(int argc, char* argv[])
     const char* result_text_ = argv[2];
     float scale_f = -1.0;
     cv::String out_path_ = argv[1];
+    cv::String data_name = "scaled";
 
     if (argc > 3) scale_f = std::stof(argv[3]);
     if (argc > 4) out_path_ = argv[4];
+    if (argc > 5) data_name = argv[5];
 
     if (scale_f < epsilon_) scale_f = 1.0;
 
@@ -583,7 +593,7 @@ int main(int argc, char* argv[])
         else if (num_images > 100 && i < 100) zero_idx = "0";
         else zero_idx = "";
         scaled_img_names[i] = std::to_string(scaled_img_set[i].cols) + "x" + std::to_string(scaled_img_set[i].rows) + "_" + zero_idx + std::to_string(i) +  ".png";
-        scaled_img_names[i] = "scaled_" + scaled_img_names[i]; 
+        scaled_img_names[i] = data_name + scaled_img_names[i];
         scaled_img_names[i] = out_path_ + "/" + scaled_img_names[i];    
     }
     std::vector<Img_info> Image_info;
