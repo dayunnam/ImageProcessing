@@ -527,7 +527,7 @@ int main(int argc, char* argv[])
 {
     if (argc < 3) {
         fprintf(stdout, "ERROR::No input dataset\nIn order to run the program type: 'Pose_Estimation.exe [the path of input data] [the name of output json file] [(optional)scale factor] [(optional)the path of output picture] [(optional)data name]'\n");
-        fprintf(stdout, "EXAMPLE::Pose_Estimation.exe ./pic cam_param.json 1 ./out_pic'\n");
+        fprintf(stdout, "EXAMPLE::Pose_Estimation.exe ./pic cam_param.json 1 ./out_pic GB_U'\n");
         return -1;
     }
     
@@ -593,7 +593,7 @@ int main(int argc, char* argv[])
         else if (num_images > 100 && i < 100) zero_idx = "0";
         else zero_idx = "";
         scaled_img_names[i] = std::to_string(scaled_img_set[i].cols) + "x" + std::to_string(scaled_img_set[i].rows) + "_" + zero_idx + std::to_string(i) +  ".png";
-        scaled_img_names[i] = data_name + scaled_img_names[i];
+        scaled_img_names[i] = data_name + "_" + scaled_img_names[i];
         scaled_img_names[i] = out_path_ + "/" + scaled_img_names[i];    
     }
     std::vector<Img_info> Image_info;
