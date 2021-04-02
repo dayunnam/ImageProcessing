@@ -303,7 +303,7 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
     std::vector<double> focals;
     for (size_t i = 0; i < cameras_.size(); ++i)
     {
-        //std::cout << "Camera #" << indices[i] + 1 << ":\nK:\n" << cameras[i].K() << "\nR:\n" << cameras[i].R;
+     //   std::cout << "Camera #" << indices[i] + 1 << ":\nK:\n" << cameras_[i].K() << "\nR:\n" << cameras_[i].R;
         focals.push_back(cameras_[i].focal);
     }
 
@@ -359,8 +359,10 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
             }
         }
     }
-    if (match_pair.size() < 1) return false;
-
+    if (match_pair.size() < 1) {
+        std::cout << "the number of match_pair is less than 1\n";
+        return false;
+    }
     // 1) Initialize cameras (rotation, translation, intrinsic parameters)
     std::vector<SFM::Vec9d> cameras(img_set.size(), SFM::Vec9d(0, 0, 0, 0, 0, 0, focal_init, cx_init, cy_init));
 
@@ -412,9 +414,9 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
         SFM::addCostFunc6DOF(ba, Xs[visit->second], x, cameras[cam_idx], ba_loss_width);
     }
     ceres::Solver::Options options;
-    options.linear_solver_type = ceres::ITERATIVE_SCHUR;
+    options.linear_solver_type = ceres::SPARSE_SCHUR; //SPARSE_SCHUR, ITERATIVE_SCHUR, SPARSE_NORMAL_CHOLESKY, SCHUR_JACOBI, DENSE_SCHUR
     if (ba_num_iter > 0) options.max_num_iterations = ba_num_iter;
-    options.num_threads = 8;
+    options.num_threads = 6;
     options.minimizer_progress_to_stdout = true;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &ba, &summary);
@@ -432,6 +434,14 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
 
     assert(Image_info_.size == cameras.size());
 
+
+    FILE* fcam;
+    fopen_s(&fcam, "sfm_global(camera).xyz", "wt");
+    if (fcam == NULL) {
+        std::cout << "sfm_global(camera).xyz is NULL\n";
+        return false;
+    }
+
     for (size_t j = 0; j < cameras.size(); j++) {
 
         double min_z, max_z;
@@ -439,6 +449,8 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
         cv::Matx33d R;
         cv::Rodrigues(rvec, R);
         cv::Vec3d p = -R.t() * t;
+        fprintf(fcam, "%f %f %f %f %f %f\n", p[0], p[1], p[2], R.t()(0, 2), R.t()(1, 2), R.t()(2, 2)); // Format: x, y, z, n_x, n_y, n_z
+
 
         cv::Vec3d cam2pt(Xs[0].x - p[0], Xs[0].y - p[1], Xs[0].z - p[2]);
         cv::Vec3d normal(R.t()(0, 2), R.t()(1, 2), R.t()(2, 2));
@@ -466,19 +478,37 @@ bool pose_estimatoin(const std::vector<cv::Mat>& img_set, const std::vector<std:
 
         RotationMatrixToEulerAngles(R, Image_info_[j].yaw, Image_info_[j].pitch, Image_info_[j].roll);
         TranslationToPosition(p, 1, Image_info_[j].pos0, Image_info_[j].pos1, Image_info_[j].pos2);
+
         Image_info_[j].focal = cameras[j][6];
         Image_info_[j].c_x = cameras[j][7];
         Image_info_[j].c_y = cameras[j][8];
 
+        fprintf(stdout, "3DV Tutorial: # of 3D points: %zd (Rejected: %d)\n", Xs.size(), num_noisy);
         fprintf(stdout, "Camera %zd's position (axis_0, axis_1, axis_2) = (%.3f, %.3f, %.3f)\n", j, Image_info_[j].pos0, Image_info_[j].pos1, Image_info_[j].pos2);
         fprintf(stdout, "Camera %zd's rotation (yaw, pitch, roll) = (%.3f, %.3f, %.3f)\n", j, Image_info_[j].yaw, Image_info_[j].pitch, Image_info_[j].roll);
         fprintf(stdout, "Camera %zd's (f, cx, cy) = (%.3f, %.3f, %.3f)\n", j, Image_info_[j].focal, Image_info_[j].c_x, Image_info_[j].c_y);
         fprintf(stdout, "Camera %zd's z range  = [%.3f (=min) , %.3f (=max)]\n\n", j, min_z, max_z);
 
+        // Store the 3D points to an XYZ file
+        FILE* fpts;
+        fopen_s(&fpts, "sfm_global(point).xyz", "wt");
+        if (fpts == NULL) {
+            std::cout << "Pointer of the file sfm_global(point).xyz is NULL\n";
+            return false;
+        }
+        for (size_t i = 0; i < Xs.size(); i++)
+        {
+            if (Xs[i].z > -Z_limit && Xs[i].z < Z_limit && !is_noisy[i])
+                fprintf(fpts, "%f %f %f %d %d %d\n", Xs[i].x, Xs[i].y, Xs[i].z, Xs_rgb[i][2], Xs_rgb[i][1], Xs_rgb[i][0]); // Format: x, y, z, R, G, B
+                
+        }
+        fclose(fpts);
+
+
     }
 
     std::cout << "# of image " << Image_info_.size() << std::endl;
- 
+
     return true;
 }
 
@@ -514,7 +544,7 @@ bool Write_JSON_file(const std::vector<Img_info>& Image_info_, const char* resul
         fprintf(fpts, "      \"Principle_point\": [%.6f, %.6f],\n", Image_info_[pic_idx].c_x, Image_info_[pic_idx].c_y);
         fprintf(fpts, "      \"Depth_range\": [%.6f, %.6f],\n", Image_info_[pic_idx].min_z_val, Image_info_[pic_idx].max_z_val);
         fprintf(fpts, "      \"Resolution\": [%d, %d]\n", Image_info_[pic_idx].Image.cols, Image_info_[pic_idx].Image.rows);
-        if(pic_idx != Image_info_.size()-1) fprintf(fpts, "    },\n");
+        if (pic_idx != Image_info_.size() - 1) fprintf(fpts, "    },\n");
         else fprintf(fpts, "    }\n");
     }
 
@@ -530,7 +560,7 @@ int main(int argc, char* argv[])
         fprintf(stdout, "EXAMPLE::Pose_Estimation.exe ./pic cam_param.json 1 ./out_pic GB_U'\n");
         return -1;
     }
-    
+
     cv::String path_ = argv[1];
     const char* result_text_ = argv[2];
     float scale_f = -1.0;
@@ -592,9 +622,9 @@ int main(int argc, char* argv[])
         else if (num_images > 100 && i < 10) zero_idx = "00";
         else if (num_images > 100 && i < 100) zero_idx = "0";
         else zero_idx = "";
-        scaled_img_names[i] = std::to_string(scaled_img_set[i].cols) + "x" + std::to_string(scaled_img_set[i].rows) + "_" + zero_idx + std::to_string(i) +  ".png";
+        scaled_img_names[i] = std::to_string(scaled_img_set[i].cols) + "x" + std::to_string(scaled_img_set[i].rows) + "_" + zero_idx + std::to_string(i) + ".png";
         scaled_img_names[i] = data_name + "_" + scaled_img_names[i];
-        scaled_img_names[i] = out_path_ + "/" + scaled_img_names[i];    
+        scaled_img_names[i] = out_path_ + "/" + scaled_img_names[i];
     }
     std::vector<Img_info> Image_info;
     if (!pose_estimatoin(scaled_img_set, scaled_img_names, Image_info)) {
